@@ -3,15 +3,15 @@
 .global count_det
 
 count_det:
-	ldr r1, [r0], #4
-	ldr r2, [r0], #4
-	ldr r3, [r0], #4
-	ldr r4, [r0], #4
-	ldr r5, [r0], #4
-	ldr r6, [r0], #4
-	ldr r7, [r0], #4
-	ldr r8, [r0], #4
-	ldr r9, [r0], #4
+	ldrsb r1, [r0], #4
+	ldrsb r2, [r0], #4
+	ldrsb r3, [r0], #4
+	ldrsb r4, [r0], #4
+	ldrsb r5, [r0], #4
+	ldrsb r6, [r0], #4
+	ldrsb r7, [r0], #4
+	ldrsb r8, [r0], #4
+	ldrsb r9, [r0], #4
 	mul r0, r1, r5
 	mul r0, r9
 	mul r10, r2, r6
@@ -30,5 +30,7 @@ count_det:
 	add r1, r10
 	add r1, r4
 	sub r0, r1
+	push {r4-r10}
+	pop {r4-r10}
 	bx lr
 	
