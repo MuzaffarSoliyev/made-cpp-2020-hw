@@ -20,7 +20,9 @@ std::vector<double> operator+(const vector<double>& a,
   return c;
 }
 
-std::vector<double> operator+(const vector<double>& a) { return a; }
+std::vector<double> operator+(const vector<double>& a) { 
+  return a; 
+}
 
 std::vector<double> operator-(const vector<double>& a) {
   vector<double> c(a.size());
