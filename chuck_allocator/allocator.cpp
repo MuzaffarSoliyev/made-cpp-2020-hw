@@ -1,42 +1,4 @@
 #include <iostream>
-#include <vector>
-
-struct Block {
-  size_t start;
-  size_t size;
-  Block(size_t start, size_t size) : start(start), size(size) {}
-};
-
-template <typename T>
-struct Chunk {
-  Chunk(size_t size) : size(size), free_size(size) {
-    data = new char[size * sizeof(char)];
-    next = nullptr;
-  }
-
-  ~Chunk() { delete[] data; }
-
-  T* allocate(size_t size) {
-    if (blocks.size() == 0) {
-      Block new_block(0, size);
-      blocks.push_back(new_block);
-      return (T*)((char*)(data));
-    } else if (blocks.back().start + size <= this->size) {
-      Block new_block(blocks.back().start + blocks.back().size + 1, size);
-      blocks.push_back(new_block);
-      return (T*)((char*)(data) + blocks.back().start + blocks.back().size + 1);
-    } else {
-      return nullptr;
-    }
-  }
-
- public:
-  T* data;
-  size_t size;
-  size_t free_size;
-  Chunk<T>* next;
-  std::vector<Block> blocks;
-};
 
 template <typename T>
 class Allocator {
@@ -53,54 +15,47 @@ class Allocator {
     typedef Allocator<U> other;
   };
   using is_always_equal = std::true_type;
-
-  Allocator(size_t chunk_size)
-      : chunks(nullptr), ref_count(0), chunk_size(chunk_size) {}
+  const size_type CHUNK_SIZE = 1000;
+  Allocator() {
+    head = new Chunk(CHUNK_SIZE);
+    ref_count = 1;
+  }
 
   Allocator(const Allocator<T>& another) {
-    chunks = another.chunks;
+    head = another.head;
     ref_count = another.ref_count + 1;
-    chunk_size = another.chunk_size;
   }
 
   ~Allocator() {
     if (ref_count > 0) {
-      while (chunks) {
-        Chunk<T> tmp = chunks;
-        chunks = chunks->next;
+      while (head->next) {
+        Chunk* tmp = head;
+        head = head->next;
         delete tmp;
       }
-      ref_count = 0;
+      ref_count = 1;
     }
   }
 
-  T* allocate(const size_t size) {
-    size_t mem_size = size * sizeof(T);
-    if (mem_size > this->chunk_size) {
+  T* allocate(const size_type size) {
+    if (size > CHUNK_SIZE) {
       throw std::bad_alloc();
     } else {
-      if (chunks) {
-        Chunk<T>* cur = this->chunks;
-        Chunk<T>* prev = nullptr;
-        if (cur != nullptr) {
-          while (cur != nullptr) {
-            T* tmp = cur->allocate(size);
-            if (tmp != nullptr) {
-              return tmp;
-            }
-            prev = cur;
-            cur = cur->next;
-          }
-        } else {
-          prev->next = new Chunk<T>(this->chunk_size);
-          T* tmp = prev->next->allocate(size);
-          return tmp;
-        }
-
+      Chunk* tmp = head;
+      if (tmp->get_free_size() > size) {
+        return tmp->allocate(size);
+      } else if (!(tmp->next)) {
+        Chunk* new_chunk = new Chunk(CHUNK_SIZE);
+        tmp->next = new_chunk;
+        return tmp->allocate(size);
       } else {
-        this->chunks = new Chunk<T>(this->chunk_size);
-        T* tmp = this->chunks->allocate(size);
-        return tmp;
+        while (tmp->next) {
+          if (tmp->get_free_size() > size) {
+            return tmp->allocate(size);
+          } else {
+            tmp = tmp->next;
+          }
+        }
       }
     }
   }
@@ -109,9 +64,8 @@ class Allocator {
     if (*this == another) {
       return *this;
     } else {
-      chunks = another.chunks;
+      head = another.head;
       ref_count = another.ref_count + 1;
-      chunk_size = another.chunk_size;
       return *this;
     }
   }
@@ -126,7 +80,32 @@ class Allocator {
   void destroy(T* p) { p->~T(); }
 
  private:
-  size_t ref_count = 0;
-  Chunk<T>* chunks;
-  size_t chunk_size;
+  class Chunk {
+    friend class Allocator;
+    Chunk(size_t size) : free_size(size) {
+      data = (pointer) new char[size * sizeof(char)];
+      begin_block = data;
+      next = nullptr;
+    }
+
+    ~Chunk() { delete[] data; }
+
+    size_type get_free_size() { return free_size; }
+
+    pointer allocate(size_t size) {
+      pointer begin = begin_block;
+      begin_block = begin_block + size * sizeof(T);
+      free_size -= size;
+      return begin;
+    }
+
+   public:
+    pointer data;
+    pointer begin_block;
+    size_type free_size;
+    Chunk* next;
+  };
+
+  size_type ref_count = 0;
+  Chunk* head = nullptr;
 };
