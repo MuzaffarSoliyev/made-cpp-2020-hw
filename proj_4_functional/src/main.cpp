@@ -3,6 +3,8 @@
 
 #include "compose.h"
 
+using namespace std;
+
 int main() {
   const std::function<bool(int)> a = [](int x) -> bool {
     std::cout << "a" << std::endl;
@@ -41,8 +43,8 @@ int main() {
   }
 
   {
-    auto res = compose(a, b, c, a, b, c, a, b, c);
-    auto true_res = c(b(a(c(b(a(c(b(a(true)))))))));
+    auto res = compose(a, b, c, a, b, c);
+    auto true_res = a(b(c(a(b(c(true))))));
     if (res(true) != true_res) {
       cout << "Test 3 Failed" << endl;
     }
